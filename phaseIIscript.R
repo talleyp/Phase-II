@@ -15,14 +15,13 @@ conn <- dbConnect(drv, "jdbc:mysql://mydb.itap.purdue.edu/DB_NAME",
 getRetailBar <- dbGetQuery(conn, "QUERY")
 getRegionBar <- dbGetQuery(conn, "QUERY")
 getLinReg <- dbGetQuery(conn, "QUERY")
+getProductReg <- dbGetQuery(conn, "QUERY")
 
 
-source(histmaker)
-source(plotmaker)
 histmaker(getRetailBar, "INSERT RECEIPT COST")
 histmaker(getRegionBar, "INSERT RECEIPT COST")
 plotmakerMonth(getLinRed, "")
-
+productplot(getProductReg, "")
 
 histmaker <- function(directory, x){
 
@@ -54,6 +53,38 @@ plotmaker <- function(directory){
                lwd = 3, col = "red")
         
         #new regression line, month as outcome, revenue as predictor
+        abline(mean(y) - mean(x) * sd(y) / sd(x) / cor(y, x), #intercept
+               sd(y) / cor(y, x) / sd(x), #slope
+               lwd = 3, col = "blue")
+        
+        #assume correlation is 1 so slope is ratio of std deviations
+        abline(mean(y) - mean(x) * sd(y) / sd(x), #intercept
+               sd(y) / sd(x),  #slope
+               lwd = 2)
+        points(mean(x), mean(y), cex = 2, pch = 19) #big point of intersection
+}
+productplot <- function(directory){
+        #splits the data by date
+        short.date = strftime(directory$date, "%Y/%m")
+
+        
+        
+        #plot the original data points with larger dots for more freq pts
+        y <- short.date$productID
+        x <- short.date
+        freqData <- as.data.frame(table(aggr.stat, short.date))
+        names(freqData) <- c("productID", "date", "freq")
+        plot(as.numeric(as.vector(freqData$date)), 
+             as.numeric(as.vector(freqData$productID)), 
+             pch = 21, col = "black", bg = "lightblue",
+             cex = .07 * freqData$freq, xlab = "month", ylab = "productID")
+        
+        #original regression line, productID as outcome, month as predictor
+        abline(mean(y) - mean(x) * cor(y, x) * sd(y) / sd(x), #intercept
+               sd(y) / sd(x) * cor(y, x),  #slope
+               lwd = 3, col = "red")
+        
+        #new regression line, month as outcome, productID as predictor
         abline(mean(y) - mean(x) * sd(y) / sd(x) / cor(y, x), #intercept
                sd(y) / cor(y, x) / sd(x), #slope
                lwd = 3, col = "blue")
