@@ -18,18 +18,48 @@ getLinReg <- dbGetQuery(conn, "QUERY")
 getProductReg <- dbGetQuery(conn, "QUERY")
 
 
-histmaker(getRetailBar, "INSERT RECEIPT COST")
-histmaker(getRegionBar, "INSERT RECEIPT COST")
-plotmakerMonth(getLinRed, "")
-productplot(getProductReg, "")
+histmakerRetail(getRetailBar, "INSERT RECEIPT COST")
+histmakerRegion(getRegionBar, "INSERT RECEIPT COST")
+plotmakerMonth(getLinRed)
+productplot(getProductReg)
 
-histmaker <- function(directory, x){
-
-        id = nrow(getRetailBar)
-        s = split(data, data$x)
-        rev = sapply(s$cost, sum)
-        barplot(rev, beside=T)
+#Receives a table with 2 columns, retailer and amount
+#Creates a bar plot for revenue by Retailer ID
+histmakerRetail <- function(directory, x){        
+        aggdata = aggregate(directory, by=list(x), FUN=sum)
+        aggfix = cbind(aggdata[1], aggdata[3])
+        rowid = aggfix[,1]
+        rev = aggfix[,2]
+        colnames(aggfix) <- c("retailer ID", "revenue")
+        barplot(rev, 
+                col = c("lightblue", "mistyrose",
+                                        "lightcyan", "lavender"),
+                
+                xlab = colnames(aggfix[1]),
+                ylab = colnames(aggfix[2]),
+                names.arg = rowid)
+                
 }
+
+#Receives a table with 2 columns, region and amount
+#Creates a bar plot for revenue by Region
+histmakerRegion <- function(directory, x){        
+        aggdata = aggregate(directory, by=list(x), FUN=sum)
+        aggfix = cbind(aggdata[1], aggdata[3])
+        rowid = aggfix[,1]
+        rev = aggfix[,2]
+        colnames(aggfix) <- c("region ID", "revenue")
+        barplot(rev, 
+                col = c("lightblue", "mistyrose",
+                        "lightcyan", "lavender"),
+                
+                xlab = colnames(aggfix[1]),
+                ylab = colnames(aggfix[2]),
+                names.arg = rowid)
+        
+}
+
+#Creates a plot for revenue vs time
 plotmaker <- function(directory){
         #splits the data by date
         short.date = strftime(directory$date, "%Y/%m")
@@ -63,6 +93,8 @@ plotmaker <- function(directory){
                lwd = 2)
         points(mean(x), mean(y), cex = 2, pch = 19) #big point of intersection
 }
+
+#Creates a plot for product vs time
 productplot <- function(directory){
         #splits the data by date
         short.date = strftime(directory$date, "%Y/%m")
