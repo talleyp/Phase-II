@@ -1,4 +1,5 @@
 require(RJDBC)
+require(plyr)
 
 # this line will create the driver object to allow R to talk with MySQL
 drv <- JDBC("com.mysql.jdbc.Driver","mysql-connector-java-5.1.34 bin.jar",
@@ -50,11 +51,12 @@ histmakerRegion <- function(directory, x){
         #combines the amount based on retailer ID
         aggdata = aggregate(directory, by=list(x), FUN=sum)
         
-        #Takes away unnecssary column
+        #Takes away unnecssary column and fixes format
         aggfix = cbind(aggdata[1], aggdata[3])
         rowid = aggfix[,1]
         rev = aggfix[,2]
         colnames(aggfix) <- c("region ID", "revenue")
+
         barplot(rev, 
                 col = c("lightblue", "mistyrose",
                         "lightcyan", "lavender"),
@@ -69,71 +71,56 @@ histmakerRegion <- function(directory, x){
 plotmaker <- function(directory){
         png(filename="predRev.png", width=500, height=500, type="cairo")
         
-        #splits the data by date
-        short.date = strftime(directory$date, "%Y/%m")
+        #adds month and year column
+        directory$year <- strftime(directory$date, format="%Y")
+        directory$month <- strftime(directory$date, format="%m")
+        
         #create revenue by date
-        aggr.stat = aggregate(directory$amount ~ short.date, FUN = sum)
+        aggr.stat = ddply(directory, .(year, month), function(x) sum(x$amount))
         
         
         #plot the original data points with larger dots for more freq pts
-        y <- aggr.stat
-        x <- short.date
-        freqData <- as.data.frame(table(aggr.stat, short.date))
-        names(freqData) <- c("revenue", "date", "freq")
-        plot(as.numeric(as.vector(freqData$date)), 
-             as.numeric(as.vector(freqData$revenue)), 
+        y <- aggr.stat$V1
+        x <- as.numeric(aggr.stat$month)
+        
+        plot(x, y, type = "p",
              pch = 21, col = "black", bg = "lightblue",
-             cex = .07 * freqData$freq, xlab = "month", ylab = "revenue")
+             xlab = "month", ylab = "revenue [USD]")
         
         #original regression line, revenue as outcome, month as predictor
-        abline(mean(y) - mean(x) * cor(y, x) * sd(y) / sd(x), #intercept
-               sd(y) / sd(x) * cor(y, x),  #slope
+        abline(lm(y~x), #regression line 
                lwd = 3, col = "red")
         
-        #new regression line, month as outcome, revenue as predictor
-        abline(mean(y) - mean(x) * sd(y) / sd(x) / cor(y, x), #intercept
-               sd(y) / cor(y, x) / sd(x), #slope
-               lwd = 3, col = "blue")
         
-        #assume correlation is 1 so slope is ratio of std deviations
-        abline(mean(y) - mean(x) * sd(y) / sd(x), #intercept
-               sd(y) / sd(x),  #slope
-               lwd = 2)
-        points(mean(x), mean(y), cex = 2, pch = 19) #big point of intersection
+        
         dev.off()
 }
 
-#Creates a plot for product vs time
-productplot <- function(directory){
-        png(filename="predProd.png", width=500, height=500, type="cairo")
-        
-        #splits the data by date
-        short.date = strftime(directory$date, "%Y/%m")
 
-        #plot the original data points with larger dots for more freq pts
-        y <- short.date$productID
-        x <- short.date
-        freqData <- as.data.frame(table(aggr.stat, short.date))
-        names(freqData) <- c("productID", "date", "freq")
-        plot(as.numeric(as.vector(freqData$date)), 
-             as.numeric(as.vector(freqData$productID)), 
-             pch = 21, col = "black", bg = "lightblue",
-             cex = .07 * freqData$freq, xlab = "month", ylab = "productID")
-        
-        #original regression line, productID as outcome, month as predictor
-        abline(mean(y) - mean(x) * cor(y, x) * sd(y) / sd(x), #intercept
-               sd(y) / sd(x) * cor(y, x),  #slope
-               lwd = 3, col = "red")
-        
-        #new regression line, month as outcome, productID as predictor
-        abline(mean(y) - mean(x) * sd(y) / sd(x) / cor(y, x), #intercept
-               sd(y) / cor(y, x) / sd(x), #slope
-               lwd = 3, col = "blue")
-        
-        #assume correlation is 1 so slope is ratio of std deviations
-        abline(mean(y) - mean(x) * sd(y) / sd(x), #intercept
-               sd(y) / sd(x),  #slope
-               lwd = 2)
-        points(mean(x), mean(y), cex = 2, pch = 19) #big point of intersection
-        dev.off()
-}
+# #Creates a plot for product vs time
+# productplot <- function(directory){
+#         png(filename="predProd.png", width=500, height=500, type="cairo")
+#         
+#         #adds month and year column
+#         directory$year <- strftime(directory$date, format="%Y")
+#         directory$month <- strftime(directory$date, format="%m")
+# 
+#         #plot the original data points with larger dots for more freq pts
+#         y <- directory$productID
+#         x <- directory$month
+#         freqData <- as.data.frame(table(directory$productID, directory$month))
+#         names(freqData) <- c("productID", "date", "freq")
+#         #plot(as.numeric(as.vector(freqData$date)), 
+#         #    as.numeric(as.vector(freqData$productID)), 
+#         #     pch = 21, col = "black", bg = "lightblue",
+#         #     cex = .07 * freqData$freq, xlab = "month", ylab = "productID")
+#         plot(as.numeric(as.vector(freqData$date)), 
+#              as.numeric(as.vector(freqData$productID)), type="n",
+#              xlim=range(as.numeric(simpledf$month)), 
+#              ylim=range(simpledf$productID), xlab="Month", ylab="productID")
+#         
+#         
+#         #original regression line, revenue as outcome, month as predictor
+#         abline(lm(y~x), #regression line 
+#                lwd = 3, col = "red")
+# }
