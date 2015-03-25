@@ -1,5 +1,8 @@
 require(RJDBC)
 require(plyr)
+require(ggplot2)
+require(data.table)
+require(splitstackshape)
 
 # this line will create the driver object to allow R to talk with MySQL
 drv <- JDBC("com.mysql.jdbc.Driver","mysql-connector-java-5.1.34 bin.jar",
@@ -97,30 +100,34 @@ plotmaker <- function(directory){
 }
 
 
-# #Creates a plot for product vs time
-# productplot <- function(directory){
-#         png(filename="predProd.png", width=500, height=500, type="cairo")
-#         
-#         #adds month and year column
-#         directory$year <- strftime(directory$date, format="%Y")
-#         directory$month <- strftime(directory$date, format="%m")
-# 
-#         #plot the original data points with larger dots for more freq pts
-#         y <- directory$productID
-#         x <- directory$month
-#         freqData <- as.data.frame(table(directory$productID, directory$month))
-#         names(freqData) <- c("productID", "date", "freq")
-#         #plot(as.numeric(as.vector(freqData$date)), 
-#         #    as.numeric(as.vector(freqData$productID)), 
-#         #     pch = 21, col = "black", bg = "lightblue",
-#         #     cex = .07 * freqData$freq, xlab = "month", ylab = "productID")
-#         plot(as.numeric(as.vector(freqData$date)), 
-#              as.numeric(as.vector(freqData$productID)), type="n",
-#              xlim=range(as.numeric(simpledf$month)), 
-#              ylim=range(simpledf$productID), xlab="Month", ylab="productID")
-#         
-#         
-#         #original regression line, revenue as outcome, month as predictor
-#         abline(lm(y~x), #regression line 
-#                lwd = 3, col = "red")
-# }
+#Creates a plot for product vs time
+seasonProducts <- function(directory){
+        png(filename="predProd.png", width=500, height=500, type="cairo")
+        
+        #creates a shortdate column year/month
+        directory$shortdate <- strftime(directory$date, format="%Y/%m")
+        
+        tempdf <- as.data.table(directory)
+        
+        #counts product ID's for each unique shortdate
+        setkey(tempdf, shortdate, productID)
+        tempdt <- tempdf[CJ(unique(shortdate), unique(productID)), .N, by = .EACHI]
+        as.data.frame(tempdt)
+        
+        #splits short date into year and month columns
+        finaldf <- cSplit(tempdt, "shortdate", "/", stripWhite=FALSE, type.convert=FALSE)
+        as.data.frame(finaldf)
+        setnames(finaldf, names(finaldf), c("productID","N","year","month"))
+        finaldf <- sapply(finaldf, as.numeric)
+        finaldf<- as.data.frame(finaldf)
+        
+        #Creates histogram for each month showing product ID amounts each year
+        hp <- (ggplot(finaldf, aes(x=productID, y=N)) + 
+                       geom_bar(aes(fill=year),   # fill depends on cond2
+                                stat="identity",
+                                colour="black") )    # Black outline for all
+        
+        hp + facet_wrap( ~ month, ncol=3)
+        dev.off()
+        
+}
