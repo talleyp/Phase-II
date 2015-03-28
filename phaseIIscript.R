@@ -21,16 +21,41 @@ getRegionBar <- dbGetQuery(conn, "QUERY")
 getLinReg <- dbGetQuery(conn, "QUERY")
 getProductReg <- dbGetQuery(conn, "QUERY")
 
-
+#Creates plot png files
+png("plot-%d.png")
+#png(filename="barRetail.png", width=500, height=500, type="cairo")
 histmakerRetail(getRetailBar, "INSERT retailer ID")
+#dev.off()
+
+#png(filename="barRegion.png", width=500, height=500, type="cairo")
 histmakerRegion(getRegionBar, "INSERT region ID")
+#dev.off()
+
+#png(filename="predRev.png", width=500, height=500, type="cairo")
 plotmakerMonth(getLinRed)
-productplot(getProductReg)
+#dev.off()
+
+#png(filename="predProd.png", width=500, height=500, type="cairo")
+print(productplot(getProductReg))
+#dev.off()
+
+#png(filename="barRetprof.png", width=500, height=500, type="cairo")
+histmakerRetail(getRetailBar, "INSERT retailer ID")
+#dev.off()
+
+#png(filename="barRegprof.png", width=500, height=500, type="cairo")
+histmakerRegion(getRegionBar, "INSERT region ID")
+#dev.off()
+
+#png(filename="predProf.png", width=500, height=500, type="cairo")
+plotmakerMonth(getLinRed)
+dev.off()
+
 
 #Receives a table with 2 columns, retailer and amount
 #Creates a bar plot for revenue by Retailer ID
 histmakerRetail <- function(directory, x){  
-        png(filename="barRetail.png", width=500, height=500, type="cairo")
+        
         aggdata = aggregate(directory, by=list(x), FUN=sum)
         aggfix = cbind(aggdata[1], aggdata[3])
         rowid = aggfix[,1]
@@ -43,13 +68,11 @@ histmakerRetail <- function(directory, x){
                 xlab = colnames(aggfix[1]),
                 ylab = colnames(aggfix[2]),
                 names.arg = rowid)
-        dev.off()        
 }
 
 #Receives a table with 2 columns, region and amount
 #Creates a bar plot for revenue by Region
 histmakerRegion <- function(directory, x){   
-        png(filename="barRegion.png", width=500, height=500, type="cairo")
         
         #combines the amount based on retailer ID
         aggdata = aggregate(directory, by=list(x), FUN=sum)
@@ -67,12 +90,10 @@ histmakerRegion <- function(directory, x){
                 xlab = colnames(aggfix[1]),
                 ylab = colnames(aggfix[2]),
                 names.arg = rowid)
-        dev.off()
 }
 
 #Creates a plot for revenue vs time
 plotmaker <- function(directory){
-        png(filename="predRev.png", width=500, height=500, type="cairo")
         
         #adds month and year column
         directory$year <- strftime(directory$date, format="%Y")
@@ -93,17 +114,13 @@ plotmaker <- function(directory){
         #original regression line, revenue as outcome, month as predictor
         abline(lm(y~x), #regression line 
                lwd = 3, col = "red")
-        
-        
-        
-        dev.off()
+
 }
 
 
 #Creates a plot for product vs time
 seasonProducts <- function(directory){
-        png(filename="predProd.png", width=500, height=500, type="cairo")
-        
+                
         #creates a shortdate column year/month
         directory$shortdate <- strftime(directory$date, format="%Y/%m")
         
@@ -128,6 +145,5 @@ seasonProducts <- function(directory){
                                 colour="black") )    # Black outline for all
         
         hp + facet_wrap( ~ month, ncol=3)
-        dev.off()
         
 }
