@@ -4,6 +4,8 @@ require(ggplot2)
 require(data.table)
 require(splitstackshape)
 
+
+
 # this line will create the driver object to allow R to talk with MySQL
 drv <-  dbDriver("MySQL")
 
@@ -11,63 +13,50 @@ drv <-  dbDriver("MySQL")
 # Replace DB_NAME with the name of your database (i.e., group name/login),
 # the LOGIN name of your group, and your group PASSWORD.
 
-conn <- dbConnect(drv, user="g1046729", pass="mapftk20", host ="mydb.itap.purdue.edu")
+conn <- dbConnect(drv, user="g1046729",dbname='g1046729', pass="mapftk20", host ="mydb.ics.purdue.edu")
 
 # run your QUERY (i.e., SELECT statement), the result is a data.frame
-#Reail and revenue
-getRetailBar <- dbGetQuery(conn, "SELECT Receipts.RetailerID, Products.Price
-FROM Receipts, Products;")
-#Region and revenue 
-getRegionBar <- dbGetQuery(conn, "SELECT Distributors.Region, Products.Price
-FROM Distributors, Products;")
-#Revene by date
-getLinReg <- dbGetQuery(conn, "SELECT Receipts.Date, Products.Price
-FROM Receipts, Products
-ORDER BY Receipts.Date;")
-#Retail and profit
-getRetailprof <- dbGetQuery(conn, "SELECT Receipts.RetailerID, [Price]-[Cost] AS amount
-FROM Receipts, Products;")
-#Region and profit
-getRegionprof <- dbGetQuery(conn, "SELECT Distributors.Region , [Price]-[Cost] AS amount
-FROM Distributors, Products;")
-#getLinprof <- dbGetQuery(conn, "QUERY")
-getProductReg <- dbGetQuery(conn, "SELECT Receipts.Date, Products.ID
- FROM Receipts, Products
- ORDER BY Receipts.Date;")
+#Retail and revenue
+        getRetailBar <- dbGetQuery(conn, "SELECT Receipts.RetailerID, Products.Price
+                                FROM Receipts, Products;")
+ #Region and revenue 
+        getRegionBar <- dbGetQuery(conn, "SELECT Distributors.Region, Products.Price
+                           FROM Distributors, Products;")
+ #Revenue by date
+        getLinReg <- dbGetQuery(conn, "SELECT Receipts.Date, Products.Price
+                        FROM Receipts, Products
+                        ORDER BY Receipts.Date;")
+ #Retail and profit
+        #getRetailprof <- dbGetQuery(conn, "SELECT Receipts.RetailerID, [Price]-[Cost] AS amount
+        #                 FROM Receipts, Products;")
+ #Region and profit
+        #getRegionprof <- dbGetQuery(conn, "SELECT Distributors.Region , [Price]-[Cost] AS amount
+         #                FROM Distributors, Products;")
 
-#Creates plot png files
-png("plot-%d.png")
-histmakerRetail(getRetailBar, "RetailerID")
+        getProductReg <- dbGetQuery(conn, "SELECT Receipts.Date, Products.ProductID
+                        FROM Receipts, Products
+                        ORDER BY Receipts.Date;")
 
-histmakerRegion(getRegionBar, "Region")
 
-plotmakerMonth(getLinRed)
 
-print(productplot(getProductReg))
 
-histmakerRetail(getRetailprof, "RetailerID")
-
-histmakerRegion(getRegionprof, "RetailerID")
-
-#plotmakerMonth(getLinprof)
-dev.off()s
 
 
 #Receives a table with 2 columns, retailer and amount
 #Creates a bar plot for revenue by Retailer ID
-histmakerRetail <- function(directory, x){  
+histmakerRetail <- function(directory){  
   
-  aggdata = aggregate(directory, by=list(x), FUN=sum)
-  aggfix = cbind(aggdata[1], aggdata[3])
-  rowid = aggfix[,1]
-  rev = aggfix[,2]
-  colnames(aggfix) <- c("retailer ID", "revenue")
-  barplot(rev, 
+  aggdata = aggregate(directory$Price, list(directory$RetailerID), FUN=sum)
+  #aggfix = cbind(aggdata[1], aggdata[2])
+  rowid = aggdata[,1]
+  rev = aggdata[,2]
+  colnames(aggdata) <- c("retailer ID", "revenue")
+  barplot(aggdata[,2], 
           col = c("lightblue", "mistyrose",
                   "lightcyan", "lavender"),
           
-          xlab = colnames(aggfix[1]),
-          ylab = colnames(aggfix[2]),
+          xlab = colnames(aggdata[1]),
+          ylab = colnames(aggdata[2]),
           names.arg = rowid)
 }
 
@@ -77,10 +66,10 @@ histmakerRegion <- function(directory, x){
   
   
   #combines the amount based on retailer ID
-  aggdata = aggregate(directory, by=list(x), FUN=sum)
+  aggdata = aggregate(directory$Price, list(directory$Region), FUN=sum)
   
   #Takes away unnecssary column and fixes format
-  aggfix = cbind(aggdata[1], aggdata[3])
+  aggfix = cbind(aggdata[1], aggdata[2])
   rowid = aggfix[,1]
   rev = aggfix[,2]
   colnames(aggfix) <- c("region ID", "revenue")
@@ -96,11 +85,11 @@ histmakerRegion <- function(directory, x){
 
 #Creates a plot for revenue vs time
 plotmaker <- function(directory){
-  directory$daten <- as.Date(directory$date, format = "%d%m%Y")
+  directory$daten <- as.Date(directory$Date, format = "%d/%m/%Y")
   
   #adds month and year column
   directory$year <- strftime(directory$daten, format="%Y")
-  directory$month <- strftime(directory$datendf$n <-, format="%m")
+  directory$month <- strftime(directory$daten, format="%m")
   
   #create revenue by date
   aggr.stat = ddply(directory, .(year, month), function(x) sum(x$Price))
@@ -126,7 +115,7 @@ plotmaker <- function(directory){
 
 #Creates a plot for product vs time
 seasonProducts <- function(directory){
-  directory$daten <- as.Date(directory$date, format = "%d%m%Y")
+        directory$daten <- as.Date(directory$Date, format = "%d/%m/%Y")
   
   #creates a shortdate column year/month
   directory$shortdate <- strftime(directory$daten, format="%Y/%m")
@@ -134,8 +123,8 @@ seasonProducts <- function(directory){
   tempdf <- as.data.table(directory)
   
   #counts product ID's for each unique shortdate
-  setkey(tempdf, shortdate, productID)
-  tempdt <- tempdf[CJ(unique(shortdate), unique(productID)), .N, by = .EACHI]
+  setkey(tempdf, shortdate, ProductID)
+  tempdt <- tempdf[CJ(unique(shortdate), unique(ProductID)), .N, by = .EACHI]
   as.data.frame(tempdt)
   
   #splits short date into year and month columns
@@ -154,3 +143,27 @@ seasonProducts <- function(directory){
   hp + facet_wrap( ~ month, ncol=3)
   
 }
+
+#Creates plot png files
+png("plot-1.png", width=500, height=500, type="cairo")
+histmakerRetail(getRetailBar)
+dev.off()
+
+png("plot-2.png", width=500, height=500, type="cairo")
+histmakerRegion(getRegionBar)
+dev.off()
+
+png("plot-3.png", width=500, height=500, type="cairo")
+plotmaker(getLinReg)
+dev.off()
+
+png("plot-4.png", width=500, height=500, type="cairo")
+print(seasonProducts(getProductReg))
+dev.off()
+
+#png("plot-5.png", width=500, height=500, type="cairo")
+#histmakerRetail(getRetailprof)
+#dev.off()
+
+#png("plot-6.png", width=500, height=500, type="cairo")
+#histmakerRegion(getRegionprof)
